@@ -1,0 +1,9 @@
+.annotation-button {
+    color: #2ad341;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+
+.annotation-button:hover {
+    color: white;
+}

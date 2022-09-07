@@ -1,0 +1,7 @@
+Type: IPython Notebook Extension
+Name: annotater
+Description: Enable to annotate selected text and persist annotations
+Link: readme.md
+Icon: icon.png
+Main: annotater.js
+Compatibility: 3.x, 4.x, 5.x
