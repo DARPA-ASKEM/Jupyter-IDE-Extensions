@@ -1,0 +1,85 @@
+{
+  "name": "vscode-annotater",
+  "displayName": "vscode-annotater",
+  "description": "\"Allows the user to store annotation information about their code via http request to a backend\"",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.71.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onFileSystem:file",
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-annotater.annotate",
+        "title": "Annotate"
+      },
+      {
+        "command": "vscode-annotater.openBrowser",
+        "title": "Open Browser"
+      },
+      {
+        "command": "vscode-annotater.sendSelection",
+        "title": "Send code to Endpoint"
+      },
+      {
+        "command": "vscode-annotater.reload",
+        "title": "Reload Annotations"
+      },
+      {
+        "command": "vscode-annotater.uploadFile",
+        "title": "Upload File"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "vscode-annotater.uploadFile",
+          "group": "annotaterGroup@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "vscode-annotater.annotate",
+          "group": "annotaterGroup@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "vscode-annotater.sendSelection",
+          "group": "annotaterGroup@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "vscode-annotater.openBrowser",
+          "group": "annotaterGroup@1"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.71.0",
+    "@types/glob": "^7.2.0",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "16.x",
+    "eslint": "^8.20.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.0.0",
+    "typescript": "^4.7.4",
+    "@vscode/test-electron": "^2.1.5"
+  },
+  "dependencies": {
+    "node-fetch": "2.6.7"
+  }
+}

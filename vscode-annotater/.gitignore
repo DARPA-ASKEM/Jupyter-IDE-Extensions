@@ -1,0 +1,4 @@
+vscode-annotater/node_modules/
+vscode-annotater/test/
+vscode-annotater/.vscode*
+vscode-annotater/.eslint*
