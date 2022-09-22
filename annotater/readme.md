@@ -9,7 +9,7 @@ Annotater
 Installation
 ------------
 
-The extension can be installed with the nice UI available on jupyter_nbextensions_configurator website, which also allows to enable/disable the extension.
+The extension requires jupyter_nbextensions to be installed. After, simply place the entire 'annotater' extension package into the 'jupyter_contrib_nbextensions/nbextensions' directory within the Jupyter site-packages directory. You can enable the annotater extension by selecting it in the 'nbextensions' tab on the Jupyter homepage.
 
 
 Testing
