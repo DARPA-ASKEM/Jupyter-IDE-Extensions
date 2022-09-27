@@ -15,6 +15,16 @@
   ],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "VSCode Annotater",
+      "properties": {
+        "vscodeAnnotater.elasticsearch.address": {
+          "type": "string",
+          "default": "http://localhost:9200/",
+          "description": "Address of the elasticsearch service to store annotations in."
+        }
+      }
+    },
     "commands": [
       {
         "command": "vscode-annotater.annotate",
