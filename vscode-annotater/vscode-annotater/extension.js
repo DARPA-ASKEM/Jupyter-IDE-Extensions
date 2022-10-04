@@ -3,7 +3,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 const vscode = require('vscode');
 const path = require('path');
-const fs = require('fs'); //REMOVE WHEN NO LONGER HARDCODING GROMET FILE.
 const fetch = require('node-fetch');
 const { constants } = require('buffer');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
@@ -67,8 +66,6 @@ function decorateLines(editor, range, annotation) {
 	console.log("Decorating lines. Range: ", range);
 	let rangeline = range.start.line;
 	const decorationType = vscode.window.createTextEditorDecorationType({
-		gutterIconPath: '/code/ASKEM-Testing/vscode-annotater/vscode-annotater/check-mark.svg',
-		gutterIconSize: 'auto',
 		after: {
 			backgroundColor: '#4e4e4e',
 			contentText: "Annotation: " + JSON.stringify(annotation[rangeline].userInput),
@@ -83,20 +80,29 @@ function decorateLines(editor, range, annotation) {
 }
 
 // Function to decorate syntax for GROMET, the two decoration functions could be combined into one eventually.
-function decorateSyntax(editor, range) {
+function decorateSyntax(editor, rangeValue, hoverDecorator) {
+
+	console.log("Decorating gromet syntax");
 
 	const decorationType = vscode.window.createTextEditorDecorationType({
-		gutterIconPath: '/code/ASKEM-Testing/vscode-annotater/vscode-annotater/check-mark.svg',
-		gutterIconSize: 'auto',
-		backgroundColor: '#00FF7F'
+		backgroundColor: '#1e281e',
+		isWholeLine: true
 	});
 
-	editor.setDecorations(decorationType, [range]);
+	const markdown = JSON.stringify(hoverDecorator);
+
+	editor.setDecorations(decorationType, [{
+		range: rangeValue,
+		hoverMessage: markdown
+	}]);
 }
 
 // Loads previous annotations from the elasticsearch endpoint and decorates them into the editor.
 async function loadPreviousAnnotations() {
 	const editor = vscode.window.activeTextEditor;
+	if (typeof editor === 'undefined') { //Fixes rejected promise error
+		return;
+	}
 	const id = editor.document.fileName.split('/').pop();
 	console.log("Document ID:", id);
 
@@ -207,6 +213,9 @@ function activate(context) {
 	// Registers command to annotate a text selection.
 	let disposable = vscode.commands.registerCommand('vscode-annotater.annotate', async function () {
 		const editor = vscode.window.activeTextEditor;
+		if (typeof editor === 'undefined') {
+			return;
+		}
 		const selection = editor.selection;
 		const selectedText = editor.document.getText(selection);
 		const id = editor.document.fileName.split('/').pop();
@@ -223,13 +232,21 @@ function activate(context) {
 		let esResponse = await getFromES(id);
 		console.log(esResponse);
 
+		// Instantiate annotation object to assign previous values if they exist in the ES.
+		let annotation;
+
+		try { annotation = esResponse.annotations; }
+		catch (error) {
+			annotation = {};
+		}
+
 		const userInput = await runWebviewForm(context);
 
-		if (userInput === 'undefined') {
+		if (typeof userInput === 'undefined') {
 			return false;
 		}
 		else {
-			let annotation = {};
+			//let annotation = {};
 			annotation[line] = {
 				"text": selectedText,
 				"range": range,
@@ -266,30 +283,67 @@ function activate(context) {
 		// SHOULD GRAB GROMET FILE FROM ENDPOINT
 		// INSTEAD WILL LOAD FROM STATIC FILE FOR NOW
 		const editor = vscode.window.activeTextEditor;
-		const hardcodedGrometJSON = require("./hardcoded-files/CHIME_SIR_while_loop--Gromet-FN-auto.json");
+		const hardcodedGrometJSON = require("./hardcoded-files/CHIME_SIR--Gromet-FN-auto.json");
+
+		console.log(hardcodedGrometJSON);
 
 		const grometAttributesArray = hardcodedGrometJSON["attributes"];
+		const grometMetadataArray = hardcodedGrometJSON["metadata_collection"]
+
+		//console.log("Got both objects, attributes: ", grometAttributesArray, " metadata: ", grometMetadataArray);
 
 		for (const element of grometAttributesArray) {
+			console.log("inside of for loop: ", element);
 			let valueArray = element.value.b;
-			let valueMetadataArray = valueArray[0].metadata;
-			let metaObject = valueMetadataArray[0];
+			let valueMetadataArrayIndex;
+			try {
+				console.log("Getting metadata index");
+				valueMetadataArrayIndex = valueArray[0]["metadata"]; // HARDCODED INDEX, potentially bad.
+				let boolcheck = typeof valueMetadataArrayIndex === 'undefined';
+				console.log("INDEX: ", valueMetadataArrayIndex, "BOOL: ", boolcheck);
+				if (typeof valueMetadataArrayIndex === 'undefined') {
+					throw "Undefined array index";
+				}
+			} catch (error) {
+				console.log("skipping iteration");
+				continue;
+			}
 
+			console.log("After try catch");
+			let metaObjectArray = grometMetadataArray[valueMetadataArrayIndex - 1];
+			if (typeof metaObjectArray === 'undefined') {
+				continue;
+			}
+			let metaObject = metaObjectArray[0]; // HARDCODED INDEX, potentially bad.
+
+			console.log("Creating range: ", metaObject);
 			let range = new vscode.Range(
 				new vscode.Position(
-					metaObject.line_begin,
+					metaObject.line_begin - 1,
 					metaObject.col_begin
 				),
 				new vscode.Position(
-					metaObject.line_end,
+					metaObject.line_end - 1,
 					metaObject.col_end
 				)
 			);
 
-			decorateSyntax(editor, range)
+			console.log("RANGE: ", range);
+
+			let hoverDecorator = {
+				"code_file_reference_uid": metaObject.code_file_reference_uid,
+				"provenance": metaObject.provenance
+			}
+
+			decorateSyntax(editor, range, hoverDecorator);
 
 		}
 	});
+
+	// Pushes an event listener for active text editor changing to reload annotations on it.
+	context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
+		loadPreviousAnnotations();
+	}));
 
 	// Pushes all disposable function calls to subscriptions.
 	context.subscriptions.push(disposable);
