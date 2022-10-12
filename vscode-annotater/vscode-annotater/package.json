@@ -2,7 +2,7 @@
   "name": "vscode-annotater",
   "displayName": "vscode-annotater",
   "description": "\"Allows the user to store annotation information about their code via http request to a backend\"",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.71.0"
   },
@@ -44,7 +44,7 @@
       },
       {
         "command": "vscode-annotater.uploadFile",
-        "title": "Upload File"
+        "title": "Send to TA1"
       },
       {
         "command": "vscode-annotater.grometHighlight",

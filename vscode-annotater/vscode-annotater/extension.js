@@ -5,6 +5,7 @@ const vscode = require('vscode');
 const path = require('path');
 const fetch = require('node-fetch');
 const { constants } = require('buffer');
+const { waitForDebugger } = require('inspector');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
 
 console.log(config.get("elasticsearch.address"));
@@ -276,7 +277,7 @@ function activate(context) {
 			console.log("Document: ", document, "Line Count: ", document.lineCount);
 		});
 
-		runWebviewForm(context);
+		vscode.commands.executeCommand("vscode-annotater.grometHighlight");
 	});
 
 	let grometHighlight = vscode.commands.registerCommand("vscode-annotater.grometHighlight", async function () {
