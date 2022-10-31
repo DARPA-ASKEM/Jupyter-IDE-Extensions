@@ -4,24 +4,40 @@
 const vscode = require('vscode');
 const path = require('path');
 const fetch = require('node-fetch');
+const fs = require('fs');
 const { constants } = require('buffer');
 const { waitForDebugger } = require('inspector');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
 
-console.log(config.get("elasticsearch.address"));
+//console.log(config.get("elasticsearch.address"));
+//console.log(config.get("elasticsearch.enable"));
 
 
 // Get data from elasticsearch endpoint
 async function getFromES(id) {
 
-	const url = config.get("elasticsearch.address") + 'vscode_annotations/_doc/' + id + '?pretty';
+	if (config.get("elasticsearch.enable")) {
+		const url = config.get("elasticsearch.address") + 'vscode_annotations/_doc/' + id + '?pretty';
 
-	const response = await fetch(url)
-		.then(response => response.json());
-	const responseValue = response;
-	const responseSource = responseValue._source;
-	console.log("RESPONSE SOURCE: ", responseSource);
-	return await responseSource;
+		const response = await fetch(url)
+			.then(response => response.json());
+		const responseValue = response;
+		const responseSource = responseValue._source;
+		console.log("RESPONSE SOURCE: ", responseSource);
+		return await responseSource;
+	}
+	else {
+		const filepath = path.join(config.get("data.folder"), id + ".json");
+		console.log("READING: ", filepath);
+		let responseSource = fs.readFileSync(filepath, 'utf8');
+		try {
+			responseSource = JSON.parse(responseSource);
+			return responseSource;
+		}
+		catch (error) {
+			return {};
+		}
+	}
 
 }
 
@@ -32,19 +48,29 @@ function pushToES(id, annotation) {
 	//REQUEST TO ELASTICSEARCH
 
 	const body = JSON.stringify({ "annotations": annotation });
-	const url = config.get("elasticsearch.address") + 'vscode_annotations/_doc/' + id + '?pretty';
 
-	console.log("FULL URL: ", url);
+	if (config.get("elasticsearch.enable")) {
 
-	const response = fetch(url, {
-		method: 'PUT',
-		headers: {
-			'Content-Type': 'application/json'
-		},
-		body: body
-	});
+		const url = config.get("elasticsearch.address") + 'vscode_annotations/_doc/' + id + '?pretty';
 
-	console.log("Push response: ", response);
+		console.log("FULL URL: ", url);
+
+		const response = fetch(url, {
+			method: 'PUT',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: body
+		});
+
+		console.log("Push response: ", response);
+	}
+	else {
+		console.log("PUSHING to LOCAL FILES");
+		const filepath = path.join(config.get("data.folder"), id + ".json");
+		console.log("Writing file body: ", body);
+		fs.writeFileSync(filepath, body, 'utf8');
+	}
 
 }
 
@@ -107,7 +133,26 @@ async function loadPreviousAnnotations() {
 	const id = editor.document.fileName.split('/').pop();
 	console.log("Document ID:", id);
 
+	// Handles local storage (non-es storage)
+	if (!config.get("elasticsearch.enable")) {
+		const filepath = path.join(config.get("data.folder"), id + ".json");
+		if (fs.existsSync(filepath)) {
+			console.log("exists:", filepath);
+		} else {
+			console.log("DOES NOT exist:", filepath);
+			fs.writeFile(filepath, JSON.stringify({}), 'utf8', function (error) {
+				if (error) {
+					console.log('File Creation: ' + error);
+				} else {
+					console.log('File Creation: success');
+				}
+			});
+		}
+
+	}
+
 	const annotationsResponse = await getFromES(id);
+	console.log("LPA response: ", annotationsResponse);
 	const annotations = annotationsResponse["annotations"];
 
 	console.log(annotations, "type of: ", typeof (annotations));
@@ -231,17 +276,23 @@ function activate(context) {
 		console.log(selection);
 
 		let esResponse = await getFromES(id);
-		console.log(esResponse);
+		//console.log("ES response in main func: ", esResponse);
 
 		// Instantiate annotation object to assign previous values if they exist in the ES.
 		let annotation;
 
 		try { annotation = esResponse.annotations; }
 		catch (error) {
+			console.log("Error getting previous annotations, may not exist.");
 			annotation = {};
 		}
+		if (typeof annotation === 'undefined') {
+			annotation = {};
+		}
+		//console.log("Annotation: ", annotation)
 
 		const userInput = await runWebviewForm(context);
+		//console.log(userInput);
 
 		if (typeof userInput === 'undefined') {
 			return false;
@@ -377,12 +428,26 @@ function getWebviewContent(bootstrap) {
 	<h3>Annotating File or Selection</h3><br>
 	<form id="annotateForm" onsubmit="formSubmit()">
 		<div class="form-group">
-			<input type="radio" id="predicate" name="annotation_type" value="predicate"  class="form-check-input">
-			<label for="predicate" class="form-check-label">Predicate</label><br>
-			<input type="radio" id="function" name="annotation_type" value="function" class="form-check-input">
-			<label for="function" class="form-check-label">Function</label><br>
-			<input type="radio" id="expression" name="annotation_type" value="expression" class="form-check-input">
-			<label for="expression" class="form-check-label">Expression</label><br>
+			<input type="checkbox" id="dynamics" name="annotation_type" value="dynamics"  class="form-check-input">
+			<label for="dynamics" class="form-check-label">Dynamics</label><br>
+
+			<input type="checkbox" id="simulation" name="annotation_type" value="simulation" class="form-check-input">
+			<label for="simulation" class="form-check-label">Simulation</label><br>
+
+			<input type="checkbox" id="initialization" name="annotation_type" value="initialization" class="form-check-input">
+			<label for="initialization" class="form-check-label">Initialization</label><br>
+
+			<input type="checkbox" id="parameterization" name="annotation_type" value="parameterization" class="form-check-input">
+			<label for="parameterization" class="form-check-label">Parameterization</label><br>
+
+			<input type="checkbox" id="dependencies" name="annotation_type" value="dependencies" class="form-check-input">
+			<label for="dependencies" class="form-check-label">Dependencies</label><br>
+
+			<input type="checkbox" id="postprocessing" name="annotation_type" value="postprocessing" class="form-check-input">
+			<label for="postprocessing" class="form-check-label">Postprocessing</label><br>
+
+			<input type="checkbox" id="undefined" name="annotation_type" value="undefined" class="form-check-input">
+			<label for="undefined" class="form-check-label">Undefined</label><br>
 		</div>
 		<div class="form-group">
 			<label for="comment">Comment:</label><br>

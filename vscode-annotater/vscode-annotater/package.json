@@ -2,7 +2,7 @@
   "name": "vscode-annotater",
   "displayName": "vscode-annotater",
   "description": "\"Allows the user to store annotation information about their code via http request to a backend\"",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.71.0"
   },
@@ -18,6 +18,16 @@
     "configuration": {
       "title": "VSCode Annotater",
       "properties": {
+        "vscodeAnnotater.data.folder": {
+          "type": "string",
+          "default": "~/",
+          "description": "Folder where local data will be written out to."
+        },
+        "vscodeAnnotater.elasticsearch.enable": {
+          "type": "boolean",
+          "default": "false",
+          "description": "When set to true, the extension will store annotations in elasticsearch at the provided address. When set to false, the extension will write annotations out to a local JSON file."
+        },
         "vscodeAnnotater.elasticsearch.address": {
           "type": "string",
           "default": "http://localhost:9200/",
