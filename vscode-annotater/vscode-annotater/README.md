@@ -20,6 +20,8 @@ Development bugs, not a final product.
 
 ## Release Notes
 
+1/25/2023 - Updated the "send to endpoint" command to send selected text to a SKEMA conde2fn network service instead. This then hits the SKEMA rust web service to extract state and parameter variables.
+
 10/04/2022 - Newest update has Gromet syntax highlight proof of concept and packaging support.
 
 9/27/2022 - Newest update has proof of concept for annotation webview form.

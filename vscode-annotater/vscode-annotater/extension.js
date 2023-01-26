@@ -7,6 +7,7 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const { constants } = require('buffer');
 const { waitForDebugger } = require('inspector');
+const { privateEncrypt } = require('crypto');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
 
 //console.log(config.get("elasticsearch.address"));
@@ -76,15 +77,53 @@ function pushToES(id, annotation) {
 
 // Post to arbitrary URL
 async function postToURL(url, body) {
-	const response = fetch(url, {
+
+	const post_body = body
+	console.log("created post body");
+	console.log("URL: ", url);
+	console.log("POST BODY: ", post_body);
+	// fs.writeFileSync("/tmp/output.json", post_body, 'utf-8');
+	const outer_reponse = fetch(url, {
 		method: 'POST',
 		headers: {
+			'Accept': '*/*',
 			'Content-Type': 'application/json'
 		},
-		body: body
-	}).then(response => response.json());
-	console.log("POST RESPONSE: ", await response);
-	return await response;
+		body: post_body
+	}).then(response => {console.log(response); console.log(response.status); return response.json()}).catch(error => console.log(error));
+	console.log("POST RESPONSE: ", await outer_reponse);
+	return await outer_reponse;
+}
+
+async function getFromURL(url) {
+	const reponse = fetch(url, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	}).then(reponse => reponse.json())
+	return await reponse;
+}
+
+// Post to SKEMA models to start variable extraction
+async function toSkemaModels(gromet_json) {
+	console.log("Inside skema models");
+	const url = config.get("askem.skema.address") + "models";
+	const response = await postToURL(url, gromet_json);
+	console.log("after post");
+	return response;
+}
+
+async function getModelStates(model_id) {
+	const url = config.get("askem.skema.address") + "models/" + model_id + "/named_opos";
+	const response = getFromURL(url);
+	return response;
+}
+
+async function getModelParameters(model_id) {
+	const url = config.get("askem.skema.address") + "models/" + model_id + "/named_opis";
+	const response = getFromURL(url)
+	return response
 }
 
 
@@ -243,15 +282,36 @@ function activate(context) {
 		vscode.env.openExternal(vscode.Uri.parse('https://jataware.com'));
 	});
 
-	//NOT FUNCTIONAL, NEED FURTHER REQUIREMENTS FROM UAZ? STUB
+	//Sends code from selection to SKEMA to create a function network.
 	let sendSelectionToEndpoint = vscode.commands.registerCommand('vscode-annotater.sendSelection', async function () {
 		const editor = vscode.window.activeTextEditor;
 		const selection = editor.selection;
 		const selectedText = editor.document.getText(selection);
 
 		//TODO send selection to endpoint
-		const body = JSON.stringify({ "code": selectedText });
-		const response = await postToURL("https://uaz.url.edu", body);
+		const body = JSON.stringify({"files": ["test"], 
+									 "blobs": [selectedText], 
+									 "system_name": "", 
+									 "root_name": ""
+									});
+
+		const skemaURL = config.get("askem.skema.code2fnaddress");
+		const skemaResponse = await postToURL(skemaURL, body); //fn-given-filepaths
+
+		// console.log(skemaResponse)
+
+		const modelsResponse = await toSkemaModels(skemaResponse);
+
+		console.log("MODEL ID", modelsResponse)
+
+		const modelStates = await getModelStates(modelsResponse);
+
+		console.log("MODEL STATES FROM GROMET: ", modelStates);
+		
+		const modelParameters = await getModelParameters(modelsResponse);
+
+		console.log("MODEL PARAMETERS FROM GROMET: ", modelParameters);
+
 
 		//TODO Replace text with returned API endpoint code
 	});

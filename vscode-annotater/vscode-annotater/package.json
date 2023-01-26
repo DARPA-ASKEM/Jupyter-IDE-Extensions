@@ -2,7 +2,7 @@
   "name": "vscode-annotater",
   "displayName": "vscode-annotater",
   "description": "\"Allows the user to store annotation information about their code via http request to a backend\"",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.71.0"
   },
@@ -32,6 +32,16 @@
           "type": "string",
           "default": "http://localhost:9200/",
           "description": "Address of the elasticsearch service to store annotations in."
+        },
+        "vscodeAnnotater.askem.skema.code2fnaddress": {
+          "type": "string",
+          "default": "http://localhost:8002/",
+          "description": "Address of the SKEMA code2fn service for use with the 'Send code to SKEMA' command."
+        },
+        "vscodeAnnotater.askem.skema.address": {
+          "type": "string",
+          "default": "http://localhost:8085/",
+          "description": "Address of the SKEMA service for use with the 'Send code to SKEMA' command."
         }
       }
     },
@@ -46,7 +56,7 @@
       },
       {
         "command": "vscode-annotater.sendSelection",
-        "title": "Send code to Endpoint"
+        "title": "Send code to SKEMA"
       },
       {
         "command": "vscode-annotater.reload",
