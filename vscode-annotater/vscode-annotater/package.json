@@ -42,6 +42,16 @@
           "type": "string",
           "default": "http://localhost:8085/",
           "description": "Address of the SKEMA service for use with the 'Send code to SKEMA' command."
+        },
+        "vscodeAnnotater.askem.mit.address": {
+          "type": "string",
+          "default": "http://100.26.10.46/",
+          "description": "Address of MIT's Annotation API that includes endpoints to send code to GPT LLM"
+        },
+        "vscodeAnnotater.askem.mit.gpt_key": {
+          "type": "string",
+          "default": "",
+          "description": "GPT key necessary to use MIT code reading service."
         }
       }
     },
@@ -69,6 +79,10 @@
       {
         "command": "vscode-annotater.grometHighlight",
         "title": "Gromet Sample"
+      },
+      {
+        "command": "vscode-annotater.sendToMIT",
+        "title": "Send to MIT"
       }
     ],
     "menus": {
@@ -87,6 +101,11 @@
         {
           "when": "editorHasSelection",
           "command": "vscode-annotater.sendSelection",
+          "group": "annotaterGroup@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "vscode-annotater.sendToMIT",
           "group": "annotaterGroup@1"
         },
         {

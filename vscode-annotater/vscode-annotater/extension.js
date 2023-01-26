@@ -8,6 +8,7 @@ const fs = require('fs');
 const { constants } = require('buffer');
 const { waitForDebugger } = require('inspector');
 const { privateEncrypt } = require('crypto');
+const { get } = require('http');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
 
 //console.log(config.get("elasticsearch.address"));
@@ -311,6 +312,29 @@ function activate(context) {
 		//TODO Replace text with returned API endpoint code
 	});
 
+	let sendSelectionToMIT = vscode.commands.registerCommand('vscode-annotater.sendToMIT', async function() {
+		const editor = vscode.window.activeTextEditor;
+		const selection = editor.selection;
+		const selectedText = editor.document.getText(selection);
+
+		const parameters_url = config.get("askem.mit.address") + "petri/get_parameters?" + new URLSearchParams({
+			"code": selectedText,
+			"gpt_key": config.get("askem.mit.gpt_key")
+		});
+		const parameters_response = await postToURL(parameters_url, body);
+
+		console.log("MODEL STATES FROM GROMET: ", parameters_response);
+
+		const transitions_url = config.get("askem.mit.address") + "petri/get_transitions?" + new URLSearchParams({
+			"code": selectedText,
+			"gpt_key": config.get("askem.mit.gpt_key")
+		});
+		const transitions_response = await postToURL(transitions_url, body);
+
+		console.log("MODEL TRANSITIONS FROM GROMET: ", transitions_response);
+
+	});
+
 	// Registers command to annotate a text selection.
 	let disposable = vscode.commands.registerCommand('vscode-annotater.annotate', async function () {
 		const editor = vscode.window.activeTextEditor;
@@ -456,6 +480,7 @@ function activate(context) {
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(HTTPOpenDisposable);
 	context.subscriptions.push(sendSelectionToEndpoint);
+	context.subscriptions.push(sendSelectionToMIT);
 	context.subscriptions.push(reload);
 	context.subscriptions.push(entireFileUpload);
 	context.subscriptions.push(grometHighlight);
