@@ -79,7 +79,6 @@ function pushToES(id, annotation) {
 async function postToURL(url, body) {
 
 	const post_body = body
-	console.log("created post body");
 	console.log("URL: ", url);
 	console.log("POST BODY: ", post_body);
 	// fs.writeFileSync("/tmp/output.json", post_body, 'utf-8');
@@ -107,10 +106,8 @@ async function getFromURL(url) {
 
 // Post to SKEMA models to start variable extraction
 async function toSkemaModels(gromet_json) {
-	console.log("Inside skema models");
 	const url = config.get("askem.skema.address") + "models";
 	const response = await postToURL(url, gromet_json);
-	console.log("after post");
 	return response;
 }
 
@@ -295,10 +292,8 @@ function activate(context) {
 									 "root_name": ""
 									});
 
-		const skemaURL = config.get("askem.skema.code2fnaddress");
-		const skemaResponse = await postToURL(skemaURL, body); //fn-given-filepaths
-
-		// console.log(skemaResponse)
+		const skemaURL = config.get("askem.skema.code2fnaddress") + "fn-given-filepaths";
+		const skemaResponse = await postToURL(skemaURL, body);
 
 		const modelsResponse = await toSkemaModels(skemaResponse);
 
