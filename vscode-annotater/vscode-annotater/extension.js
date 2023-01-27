@@ -11,6 +11,9 @@ const { privateEncrypt } = require('crypto');
 const { get } = require('http');
 const config = vscode.workspace.getConfiguration('vscodeAnnotater');
 
+const http_utils = require('./modules/http_utils');
+const skema = require('./modules/skema');
+
 //console.log(config.get("elasticsearch.address"));
 //console.log(config.get("elasticsearch.enable"));
 
@@ -74,54 +77,6 @@ function pushToES(id, annotation) {
 		fs.writeFileSync(filepath, body, 'utf8');
 	}
 
-}
-
-// Post to arbitrary URL
-async function postToURL(url, body) {
-
-	const post_body = body
-	console.log("URL: ", url);
-	console.log("POST BODY: ", post_body);
-	// fs.writeFileSync("/tmp/output.json", post_body, 'utf-8');
-	const outer_reponse = fetch(url, {
-		method: 'POST',
-		headers: {
-			'Accept': '*/*',
-			'Content-Type': 'application/json'
-		},
-		body: post_body
-	}).then(response => {console.log(response); console.log(response.status); return response.json()}).catch(error => console.log(error));
-	console.log("POST RESPONSE: ", await outer_reponse);
-	return await outer_reponse;
-}
-
-async function getFromURL(url) {
-	const reponse = fetch(url, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json'
-		}
-	}).then(reponse => reponse.json())
-	return await reponse;
-}
-
-// Post to SKEMA models to start variable extraction
-async function toSkemaModels(gromet_json) {
-	const url = config.get("askem.skema.address") + "models";
-	const response = await postToURL(url, gromet_json);
-	return response;
-}
-
-async function getModelStates(model_id) {
-	const url = config.get("askem.skema.address") + "models/" + model_id + "/named_opos";
-	const response = getFromURL(url);
-	return response;
-}
-
-async function getModelParameters(model_id) {
-	const url = config.get("askem.skema.address") + "models/" + model_id + "/named_opis";
-	const response = getFromURL(url)
-	return response
 }
 
 
@@ -203,27 +158,6 @@ async function loadPreviousAnnotations() {
 
 }
 
-
-// Deprecated
-async function runInputForm() {
-	const pickResult = await vscode.window.showQuickPick(['variable', 'function', 'lambda'], {
-		placeHolder: 'Choose type of annotation',
-		onDidSelectItem: item => vscode.window.showInformationMessage(`Focus ${item}`)
-	});
-	const comment = await vscode.window.showInputBox({
-		prompt: "Comment for your annotation:",
-		placeHolder: "Comment",
-	});
-
-	const userInput = {
-		"type": pickResult,
-		"comment": comment
-	};
-
-	return userInput;
-
-}
-
 async function runWebviewForm(context) {
 	// Create and show a new webview
 	const panel = vscode.window.createWebviewPanel(
@@ -281,7 +215,7 @@ function activate(context) {
 	});
 
 	//Sends code from selection to SKEMA to create a function network.
-	let sendSelectionToEndpoint = vscode.commands.registerCommand('vscode-annotater.sendSelection', async function () {
+	let sendSelectionToSKEMA = vscode.commands.registerCommand('vscode-annotater.sendToSKEMA', async function () {
 		const editor = vscode.window.activeTextEditor;
 		const selection = editor.selection;
 		const selectedText = editor.document.getText(selection);
@@ -294,19 +228,21 @@ function activate(context) {
 									});
 
 		const skemaURL = config.get("askem.skema.code2fnaddress") + "fn-given-filepaths";
-		const skemaResponse = await postToURL(skemaURL, body);
+		const skemaResponse = await http_utils.postToURL(skemaURL, body);
 
-		const modelsResponse = await toSkemaModels(skemaResponse);
+		const modelsResponse = await skema.toSkemaModels(skemaResponse);
 
 		console.log("MODEL ID", modelsResponse)
 
-		const modelStates = await getModelStates(modelsResponse);
+		// const modelStates = await skema.getModelStates(modelsResponse);
+		const opis_opos = await skema.getOPOSAndOPIS(modelsResponse);
 
-		console.log("MODEL STATES FROM GROMET: ", modelStates);
+		console.log("OPIS OPOS FROM GROMET: ", opis_opos);
 		
-		const modelParameters = await getModelParameters(modelsResponse);
+		// const modelParameters = await skema.getModelParameters(modelsResponse);
+		const pyacset = await skema.getPyACSet(opis_opos)
 
-		console.log("MODEL PARAMETERS FROM GROMET: ", modelParameters);
+		console.log("PyACSet from states: ", pyacset);
 
 
 		//TODO Replace text with returned API endpoint code
@@ -321,7 +257,8 @@ function activate(context) {
 			"code": selectedText,
 			"gpt_key": config.get("askem.mit.gpt_key")
 		});
-		const parameters_response = await postToURL(parameters_url, body);
+		const body = {};
+		const parameters_response = await http_utils.postToURL(parameters_url, body);
 
 		console.log("MODEL STATES FROM GROMET: ", parameters_response);
 
@@ -329,7 +266,7 @@ function activate(context) {
 			"code": selectedText,
 			"gpt_key": config.get("askem.mit.gpt_key")
 		});
-		const transitions_response = await postToURL(transitions_url, body);
+		const transitions_response = await http_utils.postToURL(transitions_url, body);
 
 		console.log("MODEL TRANSITIONS FROM GROMET: ", transitions_response);
 
@@ -479,7 +416,7 @@ function activate(context) {
 	// Pushes all disposable function calls to subscriptions.
 	context.subscriptions.push(disposable);
 	context.subscriptions.push(HTTPOpenDisposable);
-	context.subscriptions.push(sendSelectionToEndpoint);
+	context.subscriptions.push(sendSelectionToSKEMA);
 	context.subscriptions.push(sendSelectionToMIT);
 	context.subscriptions.push(reload);
 	context.subscriptions.push(entireFileUpload);
